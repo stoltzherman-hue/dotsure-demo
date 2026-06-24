@@ -339,16 +339,20 @@ async function launchAce() {
         setCallStatus('active', '⬤ Ace · Inbound Handler', true);
         document.getElementById('close-call').textContent = '✕ End Call';
       },
-      onDisconnect: () => { liveConversation = null; },
+      onDisconnect: () => {
+        liveConversation = null;
+        // If Ace's session ended while a transfer was pending, trigger it now
+        if (transferDetected) { transferDetected = false; doTransfer(); }
+      },
       onMessage: ({ message, source }) => {
         if (source === 'ai') {
           hideTyping();
           addMessage('agent', 'Ace', 'A', message, 'coral');
           const lc = message.toLowerCase();
-          if (lc.includes('aria') || lc.includes('transfer') || lc.includes('connect you') || lc.includes('putting you through') || lc.includes('specialist') || lc.includes('one moment') || lc.includes('a moment') || lc.includes('shortly')) {
+          if (lc.includes('aria') || lc.includes('transfer') || lc.includes('connect') || lc.includes('putting you') || lc.includes('specialist') || lc.includes('moment') || lc.includes('shortly') || lc.includes('pass you') || lc.includes('hand you') || lc.includes('colleague') || lc.includes('through to')) {
             transferDetected = true;
-            // No timer here — Ace is still mid-sentence when onMessage fires.
-            // Transfer triggers only after onModeChange → 'listening' (Ace fully done).
+            // Primary: onModeChange fires when Ace finishes speaking → transfers cleanly
+            // Fallback: if session ends before onModeChange, onDisconnect handles it
           }
         } else if (source === 'user') {
           hideTyping();
@@ -363,7 +367,6 @@ async function launchAce() {
             showTyping(false, 'blue');
             if (transferDetected) {
               transferDetected = false;
-              // Ace has FINISHED speaking — safe to cut the call and transfer
               setTimeout(async () => {
                 if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
                 await doTransfer();

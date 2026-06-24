@@ -368,22 +368,10 @@ async function launchAce() {
         }
       },
       onModeChange: ({ mode }) => {
-        // mode is a string: 'speaking' | 'listening' (not mode.mode)
         if (mode === 'speaking') { showTyping(true, 'coral'); }
-        else {
-          hideTyping();
-          if (mode === 'listening') {
-            showTyping(false, 'blue');
-            if (transferDetected) {
-              transferDetected = false;
-              // onModeChange fires after Ace finishes speaking — clean transfer
-              setTimeout(async () => {
-                if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
-                await doTransfer();
-              }, 800);
-            }
-          }
-        }
+        else { hideTyping(); if (mode === 'listening') showTyping(false, 'blue'); }
+        // Transfer is NOT triggered here — onModeChange fires before TTS finishes playing,
+        // which cuts Ace off mid-sentence. Timer in onMessage handles it instead.
       },
       onError: (err) => { console.error(err); runScriptedDemo(); }
     });

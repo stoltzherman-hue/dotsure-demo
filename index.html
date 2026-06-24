@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Two Agents. One Call. · Dotsure AI Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script type="module">
+  import { Conversation } from 'https://esm.sh/@11labs/client';
+  window.__ElevenLabsConversation = Conversation;
+</script>
+<style>
+:root {
+  --teal:#0097A7; --teal-light:rgba(0,151,167,0.12); --teal-border:rgba(0,151,167,0.3);
+  --coral:#FF6B35; --coral-light:rgba(255,107,53,0.12); --coral-border:rgba(255,107,53,0.3);
+  --green:#3dd68c; --green-light:rgba(61,214,140,0.12);
+  --red:#f85149; --red-light:rgba(248,81,73,0.1);
+  --yellow:#e3b341; --yellow-light:rgba(227,179,65,0.12);
+  --blue:#58a6ff; --blue-light:rgba(88,166,255,0.12);
+  --bg:#0a0e14; --surface:#111827; --surface-2:#1a2233; --surface-3:#222d40;
+  --border:rgba(255,255,255,0.07); --muted:#6b7a99; --text:#e2e8f0;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;min-height:100vh}
+
+/* ── CONFIG ── */
+#cfg-btn{
+  position:fixed;top:16px;right:16px;z-index:200;
+  font-family:'DM Mono',monospace;font-size:10px;font-weight:600;
+  padding:5px 12px;border-radius:5px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--muted);cursor:pointer;letter-spacing:1px;
+  text-transform:uppercase;transition:all 0.15s;
+}
+#cfg-btn:hover{border-color:var(--teal-border);color:var(--teal)}
+#cfg-panel{
+  position:fixed;top:50px;right:16px;z-index:200;width:340px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+  padding:20px;display:none;
+}
+#cfg-panel.open{display:block}
+#cfg-panel h3{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.cfg-field{margin-bottom:12px}
+.cfg-field label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:1px;text-transform:uppercase}
+.cfg-field input{width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface-3);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;outline:none;}
+.cfg-field input:focus{border-color:var(--teal-border)}
+.cfg-save{width:100%;padding:8px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-top:4px;}
+.cfg-note{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5}
+
+/* ── LANDING ── */
+.landing{width:100%;max-width:780px;text-align:center}
+.eyebrow{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:12px}
+h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(36px,4vw,60px);font-weight:800;line-height:1.1;color:#fff;margin-bottom:12px}
+.sub{font-size:16px;color:var(--muted);line-height:1.6;margin-bottom:28px}
+.agent-flow{display:flex;gap:12px;justify-content:center;margin-bottom:28px;flex-wrap:wrap}
+.af-card{flex:1;min-width:180px;max-width:220px;background:var(--surface);border-radius:12px;padding:16px;text-align:left}
+.af-card.ace{border:1px solid var(--coral-border)}
+.af-card.arrow{display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);background:transparent;border:none;flex:0;min-width:24px;padding:0}
+.af-card.aria{border:1px solid var(--teal-border)}
+.af-card.human{border:1px solid rgba(61,214,140,0.3)}
+.af-step{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.af-card.ace .af-step{color:var(--coral)}
+.af-card.aria .af-step{color:var(--teal)}
+.af-card.human .af-step{color:var(--green)}
+.af-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}
+.af-desc{font-size:12px;color:var(--muted);line-height:1.4}
+
+#demo-launch{
+  padding:14px 44px;border-radius:10px;border:none;
+  background:var(--coral);color:#fff;font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:17px;font-weight:700;cursor:pointer;letter-spacing:0.5px;
+  transition:all 0.2s;box-shadow:0 0 30px rgba(255,107,53,0.3);
+}
+#demo-launch:hover{transform:scale(1.03);box-shadow:0 0 50px rgba(255,107,53,0.5)}
+#demo-launch:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+#demo-mode-hint{margin-top:12px;font-size:11px;color:var(--muted)}
+#live-mode-badge{display:none;margin-top:10px;padding:6px 16px;background:var(--green-light);border:1px solid rgba(61,214,140,0.3);border-radius:20px;font-family:'DM Mono',monospace;font-size:10px;color:var(--green);letter-spacing:1px}
+
+/* ── CALL INTERFACE ── */
+#call-ui{
+  position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:300;
+  display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px;
+}
+#call-ui.open{display:flex}
+.call-card{width:100%;max-width:860px;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.call-header{background:var(--surface-2);padding:20px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border);}
+.call-status-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse-dot 1.5s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)}}
+.call-status-dot.active{background:var(--green)}
+.call-status-dot.done{background:var(--muted);animation:none}
+#call-status-text{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.call-body{display:grid;grid-template-columns:280px 1fr;min-height:380px}
+.call-left{border-right:1px solid var(--border);padding:24px}
+.policy-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.pc-field{margin-bottom:8px}
+.pc-field .pc-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.pc-field .pc-val{font-size:13px;font-weight:600;color:var(--text);margin-top:1px}
+.call-right{padding:24px;display:flex;flex-direction:column}
+#transcript{flex:1;overflow-y:auto;max-height:320px;display:flex;flex-direction:column;gap:10px}
+#soundwave-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:220px}
+#soundwave-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);transition:color 0.3s}
+#soundwave-bars{display:flex;align-items:flex-end;justify-content:center;gap:4px;height:72px;width:100%}
+.sw-bar{width:6px;border-radius:3px 3px 0 0;background:var(--teal);transition:height 0.08s ease,background 0.3s;height:4px}
+.msg{display:flex;gap:10px;animation:fadeUp 0.3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:2px}
+.msg-bubble{background:var(--surface-2);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.5;max-width:90%}
+.msg-name{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+#close-call{margin-top:16px;padding:10px 28px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+#close-call:hover{border-color:var(--teal-border);color:var(--teal)}
+
+/* ── TRANSFER OVERLAY ── */
+#transfer-overlay{display:none;position:fixed;inset:0;z-index:450;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;gap:20px}
+@keyframes transfer-dot{0%,100%{opacity:0.2;transform:scale(0.8)}50%{opacity:1;transform:scale(1.3)}}
+
+/* ── HUMAN HANDOFF ── */
+#policy-saved{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;gap:20px}
+#policy-saved.show{display:flex;animation:fadeIn 0.5s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.ps-ring{width:120px;height:120px;border-radius:50%;background:var(--green-light);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:48px;animation:pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275)}
+.ps-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:36px;font-weight:800;color:var(--green)}
+.ps-savings{font-family:'DM Mono',monospace;font-size:18px;color:var(--teal);padding:12px 24px;background:var(--teal-light);border:1px solid var(--teal-border);border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- CONFIG BUTTON -->
+<button id="cfg-btn" onclick="toggleCfg()">⚙ Config</button>
+<div id="cfg-panel">
+  <h3>ElevenLabs Setup</h3>
+  <div class="cfg-field"><label>API Key</label><input type="password" id="xi-key" placeholder="sk_xxxxxxxxxx"/></div>
+  <div class="cfg-field"><label>Ace Agent ID ★</label><input type="text" id="xi-agent-id" placeholder="agent_xxxxxxxx"/></div>
+  <div class="cfg-field"><label>Aria Agent ID ★</label><input type="text" id="xi-aria-id" placeholder="agent_xxxxxxxx"/></div>
+  <div class="cfg-field"><label>Aria Voice ID ★ (for opener)</label><input type="text" id="xi-aria-voice" placeholder="paste Aria voice ID"/></div>
+  <button class="cfg-save" onclick="saveCfg()">Save Config</button>
+  <div class="cfg-note">★ Required for live mode. API keys are stored locally in your browser — never sent anywhere except ElevenLabs.</div>
+</div>
+
+<!-- LANDING -->
+<div class="landing">
+  <div class="eyebrow">Dotsure · ElevenLabs · Conversational AI · Live</div>
+  <h1>Two Agents.<br/>One Call.</h1>
+  <p class="sub">Sarah Jones calls Dotsure to update her Motor risk address.<br/>Two AI agents handle the full interaction — live, in this room.</p>
+
+  <div class="agent-flow">
+    <div class="af-card ace">
+      <div class="af-step">Step 1 · Inbound</div>
+      <div class="af-name">Ace</div>
+      <div class="af-desc">Answers the call, identifies Sarah, understands her need, transfers to the right specialist</div>
+    </div>
+    <div class="af-card arrow">→</div>
+    <div class="af-card aria">
+      <div class="af-step">Step 2 · Service + Upsell</div>
+      <div class="af-name">Aria</div>
+      <div class="af-desc">Updates the risk address, pivots to Personal Cyber Cover R99/month, hands off to human to close</div>
+    </div>
+    <div class="af-card arrow">→</div>
+    <div class="af-card human">
+      <div class="af-step">Step 3 · Human Close</div>
+      <div class="af-name">Sales Agent</div>
+      <div class="af-desc">Receives warm handoff, activates Personal Cyber Cover — human where it matters</div>
+    </div>
+  </div>
+
+  <button id="demo-launch" onclick="startDemo()">🎤 &nbsp; Launch Demo · Sarah Jones Calling</button>
+  <div id="demo-mode-hint">Configure ElevenLabs API key + Agent IDs via ⚙ Config above</div>
+  <div id="live-mode-badge">⬤ LIVE MODE · ACE + ARIA READY · MIC WILL ACTIVATE</div>
+</div>
+
+<!-- CALL INTERFACE -->
+<div id="call-ui">
+  <div class="call-card">
+    <div class="call-header">
+      <div class="call-status-dot" id="call-dot"></div>
+      <span id="call-status-text">Initialising…</span>
+      <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)" id="call-timer">00:00</div>
+    </div>
+    <div class="call-body">
+      <div class="call-left">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">Customer File</div>
+        <div class="policy-card">
+          <div class="pc-field"><div class="pc-lbl">Name</div><div class="pc-val">Sarah Jones</div></div>
+          <div class="pc-field"><div class="pc-lbl">Policy</div><div class="pc-val">ZA-MOT-2023-112</div></div>
+          <div class="pc-field"><div class="pc-lbl">Vehicle</div><div class="pc-val">Toyota RAV4</div></div>
+          <div class="pc-field"><div class="pc-lbl">Premium</div><div class="pc-val">R1 240 / month</div></div>
+          <div class="pc-field"><div class="pc-lbl">Tenure</div><div class="pc-val">2 years · loyal</div></div>
+          <div class="pc-field"><div class="pc-lbl">Request</div><div class="pc-val" style="color:var(--yellow)">Risk Address Change</div></div>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:8px" id="ai-action-label">ACE · INBOUND ACTIVE</div>
+        <div id="offer-box" style="display:none;margin-top:10px;padding:10px;background:var(--teal-light);border:1px solid var(--teal-border);border-radius:8px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Upsell Opportunity</div>
+          <div style="font-size:12px;color:var(--text)">Personal Cyber Cover<br/>Whole family · R99/month<br/><strong style="color:var(--teal)">Identity theft · fraud · hacking</strong></div>
+        </div>
+        <div id="agent-badge-ace" style="margin-top:10px;padding:5px 10px;background:var(--coral-light);border:1px solid var(--coral-border);border-radius:6px;font-family:'DM Mono',monospace;font-size:9px;color:var(--coral);letter-spacing:1px">⬤ ACE · ACTIVE</div>
+        <div id="agent-badge-aria" style="display:none;margin-top:6px;padding:5px 10px;background:var(--teal-light);border:1px solid var(--teal-border);border-radius:6px;font-family:'DM Mono',monospace;font-size:9px;color:var(--teal);letter-spacing:1px">⬤ ARIA · ACTIVE</div>
+      </div>
+      <div class="call-right">
+        <div id="transcript"></div>
+        <div id="soundwave-wrap">
+          <div id="soundwave-label">Waiting…</div>
+          <div id="soundwave-bars">
+            <div class="sw-bar"></div><div class="sw-bar"></div><div class="sw-bar"></div>
+            <div class="sw-bar"></div><div class="sw-bar"></div><div class="sw-bar"></div>
+            <div class="sw-bar"></div><div class="sw-bar"></div><div class="sw-bar"></div>
+            <div class="sw-bar"></div><div class="sw-bar"></div><div class="sw-bar"></div>
+            <div class="sw-bar"></div><div class="sw-bar"></div><div class="sw-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button id="close-call" onclick="closeCall()">✕ Close Demo</button>
+</div>
+
+<!-- TRANSFER OVERLAY -->
+<div id="transfer-overlay" style="display:none;position:fixed;inset:0;z-index:450;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;gap:20px">
+  <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Transferring to Specialist</div>
+  <div style="display:flex;align-items:center;gap:24px">
+    <div style="text-align:center">
+      <div style="width:64px;height:64px;border-radius:50%;background:var(--coral-light);border:2px solid var(--coral);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--coral);margin:0 auto 8px">A</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--coral)">ACE</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--teal);animation:transfer-dot 1s infinite 0s"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--teal);animation:transfer-dot 1s infinite 0.2s"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--teal);animation:transfer-dot 1s infinite 0.4s"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--teal);animation:transfer-dot 1s infinite 0.6s"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--teal);animation:transfer-dot 1s infinite 0.8s"></div>
+    </div>
+    <div style="text-align:center">
+      <div style="width:64px;height:64px;border-radius:50%;background:var(--teal-light);border:2px solid var(--teal);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--teal);margin:0 auto 8px">Ar</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)">ARIA</div>
+    </div>
+  </div>
+  <div id="transfer-status" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);letter-spacing:1px">Connecting Aria…</div>
+</div>
+
+<!-- HUMAN HANDOFF -->
+<div id="policy-saved">
+  <div class="ps-ring">🤝</div>
+  <div class="ps-title">Connecting You Now.</div>
+  <div class="ps-savings">Personal Cyber Cover · R99/month · Whole family protected</div>
+  <div style="font-size:15px;color:var(--muted);margin-top:4px">Sarah Jones · ZA-MOT-2023-112 · Transferring to Sales Specialist</div>
+  <div style="margin-top:16px;padding:12px 24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center">
+    <span style="color:var(--green)">⬤</span> &nbsp;Human agent receiving warm handoff · AI briefed them · No repeat required
+  </div>
+  <button onclick="closeCall()" style="margin-top:20px;padding:10px 28px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;">Close</button>
+</div>
+
+<script>
+// ── CONFIG ──
+let XI_KEY        = localStorage.getItem('xi-key')        || '';
+let XI_AGENT_ID   = localStorage.getItem('xi-agent-id')   || '';
+let XI_ARIA_ID    = localStorage.getItem('xi-aria-id')     || '';
+let XI_ARIA_VOICE = localStorage.getItem('xi-aria-voice')  || '';
+let XI_AGENT_VOICE= localStorage.getItem('xi-agent-voice') || '21m00Tcm4TlvDq8ikWAM';
+
+function saveCfg() {
+  XI_KEY        = document.getElementById('xi-key').value.trim();
+  XI_AGENT_ID   = document.getElementById('xi-agent-id').value.trim();
+  XI_ARIA_ID    = document.getElementById('xi-aria-id').value.trim();
+  XI_ARIA_VOICE = document.getElementById('xi-aria-voice').value.trim();
+  localStorage.setItem('xi-key',        XI_KEY);
+  localStorage.setItem('xi-agent-id',   XI_AGENT_ID);
+  localStorage.setItem('xi-aria-id',    XI_ARIA_ID);
+  localStorage.setItem('xi-aria-voice', XI_ARIA_VOICE);
+  document.getElementById('cfg-panel').classList.remove('open');
+  updateLiveBadge();
+  const btn = document.querySelector('.cfg-save');
+  btn.textContent = '✓ Saved'; setTimeout(() => btn.textContent = 'Save Config', 1500);
+}
+function toggleCfg() {
+  document.getElementById('cfg-panel').classList.toggle('open');
+  document.getElementById('xi-key').value        = XI_KEY;
+  document.getElementById('xi-agent-id').value   = XI_AGENT_ID;
+  document.getElementById('xi-aria-id').value    = XI_ARIA_ID;
+  document.getElementById('xi-aria-voice').value = XI_ARIA_VOICE;
+}
+function updateLiveBadge() {
+  const badge = document.getElementById('live-mode-badge');
+  const hint  = document.getElementById('demo-mode-hint');
+  if (XI_AGENT_ID && window.__ElevenLabsConversation) {
+    badge.style.display = 'inline-block'; hint.style.display = 'none';
+  } else {
+    badge.style.display = 'none'; hint.style.display = 'block';
+  }
+}
+(function waitForSDK() {
+  if (window.__ElevenLabsConversation) { updateLiveBadge(); return; }
+  setTimeout(waitForSDK, 300);
+})();
+
+// ── DEMO STATE ──
+let callTimer = null, callSeconds = 0, demoRunning = false;
+let liveConversation = null, currentAgent = 'ace';
+
+function resetDemoUI() {
+  document.getElementById('transcript').innerHTML = '';
+  document.getElementById('offer-box').style.display = 'none';
+  document.getElementById('ai-action-label').textContent = 'ACE · INBOUND ACTIVE';
+  document.getElementById('policy-saved').style.display = 'none';
+  document.getElementById('policy-saved').classList.remove('show');
+  document.getElementById('transfer-overlay').style.display = 'none';
+  document.getElementById('agent-badge-ace').style.display = 'block';
+  document.getElementById('agent-badge-aria').style.display = 'none';
+  currentAgent = 'ace';
+}
+
+async function startDemo() {
+  if (demoRunning) return;
+  demoRunning = true;
+  document.getElementById('demo-launch').disabled = true;
+  resetDemoUI();
+  document.getElementById('call-ui').classList.add('open');
+  callSeconds = 0;
+  callTimer = setInterval(() => {
+    callSeconds++;
+    const m = String(Math.floor(callSeconds/60)).padStart(2,'0');
+    const s = String(callSeconds%60).padStart(2,'0');
+    document.getElementById('call-timer').textContent = `${m}:${s}`;
+  }, 1000);
+  if (XI_AGENT_ID && window.__ElevenLabsConversation) {
+    try { const s = await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); } catch(e) {}
+    await setCallStatus('ringing', '⬤ Sarah Jones calling Dotsure…', false);
+    await ringAnimation(2000);
+    await launchAce();
+  } else {
+    await runScriptedDemo();
+  }
+}
+
+async function launchAce() {
+  let transferDetected = false;
+  try {
+    liveConversation = await window.__ElevenLabsConversation.startSession({
+      agentId: XI_AGENT_ID,
+      onConnect: () => {
+        setCallStatus('active', '⬤ Ace · Inbound Handler', true);
+        document.getElementById('close-call').textContent = '✕ End Call';
+      },
+      onDisconnect: () => { liveConversation = null; },
+      onMessage: ({ message, source }) => {
+        if (source === 'ai') {
+          hideTyping();
+          addMessage('agent', 'Ace', 'A', message, 'coral');
+          const lc = message.toLowerCase();
+          if (lc.includes('aria') || lc.includes('transfer') || lc.includes('connect you') || lc.includes('putting you through') || lc.includes('specialist') || lc.includes('one moment') || lc.includes('a moment') || lc.includes('shortly')) {
+            transferDetected = true;
+            setTimeout(async () => {
+              if (transferDetected) {
+                transferDetected = false;
+                if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
+                await doTransfer();
+              }
+            }, 4000);
+          }
+        } else if (source === 'user') {
+          hideTyping();
+          addMessage('customer', 'Sarah', 'S', message, 'blue');
+        }
+      },
+      onModeChange: ({ mode }) => {
+        if (mode.mode === 'speaking') { showTyping(true, 'coral'); }
+        else {
+          hideTyping();
+          if (mode.mode === 'listening') {
+            showTyping(false, 'blue');
+            if (transferDetected) {
+              transferDetected = false;
+              setTimeout(async () => {
+                if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
+                await doTransfer();
+              }, 2000);
+            }
+          }
+        }
+      },
+      onError: (err) => { console.error(err); runScriptedDemo(); }
+    });
+  } catch(e) { console.error(e); runScriptedDemo(); }
+}
+
+async function doTransfer() {
+  if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
+  const overlay = document.getElementById('transfer-overlay');
+  overlay.style.display = 'flex';
+  document.getElementById('transfer-status').textContent = 'Connecting Aria…';
+  await sleep(700);
+  document.getElementById('transfer-status').textContent = 'Transfer complete ✓';
+  await sleep(600);
+  overlay.style.display = 'none';
+  currentAgent = 'aria';
+  document.getElementById('agent-badge-ace').style.display = 'none';
+  document.getElementById('agent-badge-aria').style.display = 'block';
+  document.getElementById('ai-action-label').textContent = 'ARIA · SERVICE + UPSELL';
+  setCallStatus('active', '⬤ Aria · Motor Specialist', true);
+  if (XI_ARIA_ID && window.__ElevenLabsConversation) {
+    if (XI_KEY && XI_ARIA_VOICE) {
+      showTyping(true, 'teal');
+      const ariaOpener = "Hi Sarah, this is Aria from Dotsure's Motor team. I can see you'd like to update your risk address — can you confirm your new address for me?";
+      try { await speakLine(ariaOpener, XI_ARIA_VOICE); } catch(e) { await sleep(2500); }
+      hideTyping();
+    }
+    await sleep(400);
+    await launchAria();
+  }
+}
+
+async function launchAria() {
+  try {
+    liveConversation = await window.__ElevenLabsConversation.startSession({
+      agentId: XI_ARIA_ID,
+      onConnect: () => {},
+      onDisconnect: () => { liveConversation = null; },
+      onMessage: ({ message, source }) => {
+        if (source === 'ai') {
+          hideTyping();
+          addMessage('agent', 'Aria', 'Ar', message, 'teal');
+          const lc = message.toLowerCase();
+          if (lc.includes('connect you with') || (lc.includes('specialist') && lc.includes('today'))) {
+            document.getElementById('offer-box').style.display = 'block';
+            setTimeout(() => showHumanHandoff(), 3500);
+          }
+        } else if (source === 'user') {
+          hideTyping();
+          addMessage('customer', 'Sarah', 'S', message, 'blue');
+        }
+      },
+      onModeChange: ({ mode }) => {
+        if (mode.mode === 'speaking') showTyping(true, 'teal');
+        else { hideTyping(); if (mode.mode === 'listening') showTyping(false, 'blue'); }
+      },
+      onError: (err) => console.error(err)
+    });
+  } catch(e) { console.error(e); }
+}
+
+function showHumanHandoff() {
+  if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
+  clearInterval(callTimer);
+  setCallStatus('done', '✓ Handoff Complete', false);
+  sleep(600).then(() => {
+    document.getElementById('call-ui').classList.remove('open');
+    document.getElementById('policy-saved').classList.add('show');
+    document.getElementById('policy-saved').style.display = 'flex';
+  });
+}
+
+async function runScriptedDemo() {
+  await setCallStatus('ringing', '⬤ Sarah Jones calling Dotsure…', false);
+  await ringAnimation(2000);
+  await setCallStatus('active', '⬤ Ace · Inbound Handler', true);
+  const S1 = [
+    {role:'agent',name:'Ace',avatar:'A',color:'coral',text:"Thank you for calling Dotsure, you're speaking with Ace. How can I help you today?"},
+    {role:'customer',name:'Sarah',avatar:'S',color:'blue',text:"Hi, I'd like to make a change to my Motor policy please."},
+    {role:'agent',name:'Ace',avatar:'A',color:'coral',text:"Of course Sarah. Can I confirm your policy number so I can pull up your account?"},
+    {role:'customer',name:'Sarah',avatar:'S',color:'blue',text:"It's ZA-MOT-2023-112. I need to change my risk address — I've moved."},
+    {role:'agent',name:'Ace',avatar:'A',color:'coral',text:"Got it — I'm connecting you with Aria, our Motor Policy Specialist. She's already been briefed. One moment Sarah."},
+  ];
+  for (const line of S1) {
+    showTyping(line.role==='agent', line.color); await sleep(700); hideTyping();
+    addMessage(line.role, line.name, line.avatar, line.text, line.color);
+    await sleep(line.text.length*38+600);
+    await sleep(300);
+  }
+  const overlay = document.getElementById('transfer-overlay');
+  overlay.style.display = 'flex';
+  await sleep(2800); overlay.style.display = 'none';
+  document.getElementById('agent-badge-ace').style.display = 'none';
+  document.getElementById('agent-badge-aria').style.display = 'block';
+  document.getElementById('ai-action-label').textContent = 'ARIA · SERVICE + UPSELL';
+  setCallStatus('active', '⬤ Aria · Motor Specialist', true);
+  const S2 = [
+    {role:'agent',name:'Aria',avatar:'Ar',color:'teal',text:"Hi Sarah, this is Aria from Dotsure's Motor team. Let's get that risk address updated. Can you confirm your new address for me?"},
+    {role:'customer',name:'Sarah',avatar:'S',color:'blue',text:"Yes, it's 14 Sunningdale Drive, Tyger Valley, 7536."},
+    {role:'agent',name:'Aria',avatar:'Ar',color:'teal',text:"Done — your risk address has been updated. You'll receive an SMS confirmation shortly. While I have you Sarah, I noticed you don't have our Personal Cyber Cover yet.",showOffer:true},
+    {role:'customer',name:'Sarah',avatar:'S',color:'blue',text:"Oh, what's that?"},
+    {role:'agent',name:'Aria',avatar:'Ar',color:'teal',text:"For just R99 a month, you and your whole family are covered against cybercrime, identity theft, online fraud, and social media hacking. It's our most popular add-on."},
+    {role:'customer',name:'Sarah',avatar:'S',color:'blue',text:"That sounds great actually. Yes, I'm interested."},
+    {role:'agent',name:'Aria',avatar:'Ar',color:'teal',text:"Fantastic! Let me connect you with one of our specialists who will get that activated for you today. You're in good hands Sarah — thank you for being a Dotsure customer."},
+  ];
+  for (const line of S2) {
+    showTyping(line.role==='agent', line.color||'teal'); await sleep(700); hideTyping();
+    if (line.showOffer) { document.getElementById('offer-box').style.display='block'; document.getElementById('ai-action-label').textContent='ARIA · UPSELL ACTIVE'; }
+    addMessage(line.role, line.name, line.avatar, line.text, line.color);
+    await sleep(line.text.length*38+600);
+    await sleep(300);
+  }
+  clearInterval(callTimer);
+  await setCallStatus('done', '✓ Handoff Complete', false);
+  await sleep(800);
+  document.getElementById('call-ui').classList.remove('open');
+  document.getElementById('policy-saved').classList.add('show');
+  document.getElementById('policy-saved').style.display = 'flex';
+}
+
+function closeCall() {
+  clearInterval(callTimer);
+  if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
+  document.getElementById('call-ui').classList.remove('open');
+  document.getElementById('transfer-overlay').style.display = 'none';
+  document.getElementById('policy-saved').style.display = 'none';
+  document.getElementById('policy-saved').classList.remove('show');
+  demoRunning = false;
+  document.getElementById('demo-launch').disabled = false;
+  document.getElementById('close-call').textContent = '✕ Close Demo';
+  resetDemoUI();
+}
+
+async function speakLine(text, voiceId) {
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method:'POST',
+    headers:{'Accept':'audio/mpeg','xi-api-key':XI_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({text, model_id:'eleven_multilingual_v2', voice_settings:{stability:0.5,similarity_boost:0.75,speed:1.0}})
+  });
+  if (!res.ok) throw new Error(`XI API ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(url);
+    audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+    audio.onerror = reject;
+    audio.play().catch(reject);
+  });
+}
+
+const COLOR_MAP = {
+  coral:{bg:'var(--coral-light)',color:'var(--coral)',border:'1px solid var(--coral-border)'},
+  teal: {bg:'var(--teal-light)', color:'var(--teal)', border:'1px solid var(--teal-border)'},
+  blue: {bg:'var(--blue-light)', color:'#58a6ff',     border:'1px solid rgba(88,166,255,0.3)'},
+  muted:{bg:'var(--surface-2)',  color:'var(--muted)', border:'1px solid var(--border)'},
+};
+function addMessage(role, name, avatar, text, colorKey) {
+  const c = COLOR_MAP[colorKey] || COLOR_MAP.coral;
+  const t = document.getElementById('transcript');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `<div class="msg-avatar" style="background:${c.bg};color:${c.color};border:${c.border}">${avatar}</div><div class="msg-bubble" style="border-left:2px solid ${c.color}"><div class="msg-name" style="color:${c.color}">${name}</div>${text}</div>`;
+  t.appendChild(div);
+  t.scrollTop = t.scrollHeight;
+  const sw = document.getElementById('soundwave-wrap');
+  if (sw) sw.style.display = 'none';
+  t.style.display = 'flex';
+}
+
+// Soundwave
+const SW_COLORS = {
+  coral:{bar:'#FF6B35',label:'ACE · SPEAKING'},
+  teal: {bar:'#0097A7',label:'ARIA · SPEAKING'},
+  blue: {bar:'#58a6ff',label:'SARAH · SPEAKING'},
+  muted:{bar:'#555',   label:'…'},
+};
+let _swInterval=null, _swBars=null;
+function _swTick(color) {
+  if (!_swBars) _swBars = document.querySelectorAll('.sw-bar');
+  _swBars.forEach(b => { b.style.height=(Math.floor(Math.random()*60)+8)+'px'; b.style.background=color; });
+}
+function showTyping(isAgent, colorKey) {
+  const key = colorKey||(isAgent?'coral':'blue');
+  const sw = SW_COLORS[key]||SW_COLORS.coral;
+  const lbl = document.getElementById('soundwave-label');
+  lbl.textContent = sw.label; lbl.style.color = sw.bar;
+  clearInterval(_swInterval);
+  _swTick(sw.bar);
+  _swInterval = setInterval(() => _swTick(sw.bar), 120);
+}
+function hideTyping() {
+  clearInterval(_swInterval); _swInterval=null;
+  if (!_swBars) _swBars = document.querySelectorAll('.sw-bar');
+  _swBars.forEach(b => { b.style.height='4px'; b.style.background='var(--teal)'; });
+  const lbl = document.getElementById('soundwave-label');
+  lbl.textContent='Listening…'; lbl.style.color='var(--muted)';
+}
+
+// Ring animation
+async function ringAnimation(ms) {
+  const dot = document.getElementById('call-dot');
+  dot.style.background='var(--yellow)';
+  await sleep(ms);
+}
+function setCallStatus(state, text, active) {
+  const dot = document.getElementById('call-dot');
+  dot.className = 'call-status-dot' + (active?' active':state==='done'?' done':'');
+  document.getElementById('call-status-text').textContent = text;
+  return Promise.resolve();
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>

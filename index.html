@@ -347,13 +347,8 @@ async function launchAce() {
           const lc = message.toLowerCase();
           if (lc.includes('aria') || lc.includes('transfer') || lc.includes('connect you') || lc.includes('putting you through') || lc.includes('specialist') || lc.includes('one moment') || lc.includes('a moment') || lc.includes('shortly')) {
             transferDetected = true;
-            setTimeout(async () => {
-              if (transferDetected) {
-                transferDetected = false;
-                if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
-                await doTransfer();
-              }
-            }, 4000);
+            // No timer here — Ace is still mid-sentence when onMessage fires.
+            // Transfer triggers only after onModeChange → 'listening' (Ace fully done).
           }
         } else if (source === 'user') {
           hideTyping();
@@ -368,10 +363,11 @@ async function launchAce() {
             showTyping(false, 'blue');
             if (transferDetected) {
               transferDetected = false;
+              // Ace has FINISHED speaking — safe to cut the call and transfer
               setTimeout(async () => {
                 if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
                 await doTransfer();
-              }, 2000);
+              }, 800);
             }
           }
         }
@@ -396,18 +392,14 @@ async function doTransfer() {
   document.getElementById('ai-action-label').textContent = 'ARIA · SERVICE + UPSELL';
   setCallStatus('active', '⬤ Aria · Motor Specialist', true);
   if (XI_ARIA_ID && window.__ElevenLabsConversation) {
-    if (XI_KEY && XI_ARIA_VOICE) {
-      showTyping(true, 'teal');
-      const ariaOpener = "Hi Sarah, this is Aria from Dotsure's Motor team. I can see you'd like to update your risk address — can you confirm your new address for me?";
-      try { await speakLine(ariaOpener, XI_ARIA_VOICE); } catch(e) { await sleep(2500); }
-      hideTyping();
-    }
-    await sleep(400);
+    // No TTS pre-play — Aria's first_message handles the greeting.
+    // Playing it here AND letting Aria speak it caused the double-greeting.
     await launchAria();
   }
 }
 
 async function launchAria() {
+  let handoffDetected = false;
   try {
     liveConversation = await window.__ElevenLabsConversation.startSession({
       agentId: XI_ARIA_ID,
@@ -418,9 +410,10 @@ async function launchAria() {
           hideTyping();
           addMessage('agent', 'Aria', 'Ar', message, 'teal');
           const lc = message.toLowerCase();
-          if (lc.includes('connect you with') || (lc.includes('specialist') && lc.includes('today'))) {
+          if (lc.includes('human agent') || lc.includes('connect you with') || lc.includes('transfer you') || lc.includes('our team') || lc.includes('one of our') || lc.includes('hand you over') || lc.includes('specialist will') || (lc.includes('specialist') && lc.includes('take') )) {
+            handoffDetected = true;
             document.getElementById('offer-box').style.display = 'block';
-            setTimeout(() => showHumanHandoff(), 3500);
+            // No timer — let Aria finish speaking first (onModeChange handles it)
           }
         } else if (source === 'user') {
           hideTyping();
@@ -429,7 +422,16 @@ async function launchAria() {
       },
       onModeChange: ({ mode }) => {
         if (mode.mode === 'speaking') showTyping(true, 'teal');
-        else { hideTyping(); if (mode.mode === 'listening') showTyping(false, 'blue'); }
+        else {
+          hideTyping();
+          if (mode.mode === 'listening') {
+            showTyping(false, 'blue');
+            if (handoffDetected) {
+              handoffDetected = false;
+              setTimeout(() => showHumanHandoff(), 1200);
+            }
+          }
+        }
       },
       onError: (err) => console.error(err)
     });

@@ -350,9 +350,17 @@ async function launchAce() {
           addMessage('agent', 'Ace', 'A', message, 'coral');
           const lc = message.toLowerCase();
           if (lc.includes('aria') || lc.includes('transfer') || lc.includes('connect') || lc.includes('putting you') || lc.includes('specialist') || lc.includes('moment') || lc.includes('shortly') || lc.includes('pass you') || lc.includes('hand you') || lc.includes('colleague') || lc.includes('through to')) {
-            transferDetected = true;
-            // Primary: onModeChange fires when Ace finishes speaking → transfers cleanly
-            // Fallback: if session ends before onModeChange, onDisconnect handles it
+            if (!transferDetected) {
+              transferDetected = true;
+              // Timer fires after Ace finishes the sentence (~8s covers longest responses)
+              setTimeout(async () => {
+                if (transferDetected) {
+                  transferDetected = false;
+                  if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
+                  await doTransfer();
+                }
+              }, 8000);
+            }
           }
         } else if (source === 'user') {
           hideTyping();
@@ -360,13 +368,15 @@ async function launchAce() {
         }
       },
       onModeChange: ({ mode }) => {
-        if (mode.mode === 'speaking') { showTyping(true, 'coral'); }
+        // mode is a string: 'speaking' | 'listening' (not mode.mode)
+        if (mode === 'speaking') { showTyping(true, 'coral'); }
         else {
           hideTyping();
-          if (mode.mode === 'listening') {
+          if (mode === 'listening') {
             showTyping(false, 'blue');
             if (transferDetected) {
               transferDetected = false;
+              // onModeChange fires after Ace finishes speaking — clean transfer
               setTimeout(async () => {
                 if (liveConversation) { try { liveConversation.endSession(); } catch(e){} liveConversation = null; }
                 await doTransfer();
@@ -424,10 +434,10 @@ async function launchAria() {
         }
       },
       onModeChange: ({ mode }) => {
-        if (mode.mode === 'speaking') showTyping(true, 'teal');
+        if (mode === 'speaking') showTyping(true, 'teal');
         else {
           hideTyping();
-          if (mode.mode === 'listening') {
+          if (mode === 'listening') {
             showTyping(false, 'blue');
             if (handoffDetected) {
               handoffDetected = false;
